@@ -1,0 +1,8 @@
+ACW00011604  17.1167  -61.7833   10.1    ST JOHNS COOLIDGE FLD                       
+ACW00011647  17.1333  -61.7833   19.2    ST JOHNS                                    
+AE000041196  25.3330   55.5170   34.0    SHARJAH INTER. AIRP            GSN     41196
+USC00040006  39.0333 -122.4333  601.1 CA ABBOTT MINE                                 
+USC00040010  38.2178 -121.2014   26.5 CA ACAMPO 5NE                                  
+USC00040014  34.4939 -118.2714  863.5 CA ACTON ESCONDIDO FC261                       
+USC00040024  34.5833 -117.4167  869.0 CA ADELANTO                                    
+USC00040029  41.1933 -120.9444 1280.8 CA ADIN RS                                     
