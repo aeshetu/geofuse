@@ -1,0 +1,65 @@
+# Full local stack: S3-compatible object store, PostGIS, Elasticsearch, the API, and the ETL job.
+#   docker compose up -d --wait            start storage, databases and the API
+#   docker compose run --rm etl            run the ETL against live sources
+x-geofuse-env: &geofuse-env
+  GEOFUSE_STORE: s3://geofuse-lake
+  GEOFUSE_S3_ENDPOINT: http://s3:5000
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+  AWS_DEFAULT_REGION: us-east-1
+  GEOFUSE_PG_DSN: postgresql://geofuse:geofuse@postgis:5432/geofuse
+  GEOFUSE_ES_URL: http://elasticsearch:9200
+  GEOFUSE_ES_INDEX: ${GEOFUSE_ES_INDEX:-geofuse-features}
+
+services:
+  s3:
+    # moto's server speaks the S3 API; swap GEOFUSE_STORE/GEOFUSE_S3_ENDPOINT for real AWS S3.
+    image: motoserver/moto:latest
+    ports: ["5000:5000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/moto-api/')"]
+      interval: 5s
+      retries: 20
+
+  postgis:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: geofuse
+      POSTGRES_PASSWORD: geofuse
+      POSTGRES_DB: geofuse
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U geofuse -d geofuse"]
+      interval: 5s
+      retries: 20
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"   # local development only
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    ports: ["9200:9200"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health?wait_for_status=yellow || exit 1"]
+      interval: 5s
+      retries: 40
+
+  api:
+    build: .
+    image: ${GEOFUSE_IMAGE:-geofuse:local}
+    environment: *geofuse-env
+    ports: ["8000:8000"]
+    depends_on:
+      postgis: {condition: service_healthy}
+      elasticsearch: {condition: service_healthy}
+
+  etl:
+    image: ${GEOFUSE_IMAGE:-geofuse:local}
+    environment: *geofuse-env
+    command: ["sh", "-c", "geofuse init-db && geofuse run"]
+    profiles: ["etl"]
+    depends_on:
+      s3: {condition: service_healthy}
+      postgis: {condition: service_healthy}
+      elasticsearch: {condition: service_healthy}
