@@ -3,6 +3,10 @@
 Axis order is the trap here. In WFS 1.1.0, "EPSG:4326" means latitude first, while the server's
 un-suffixed bbox means longitude first; mixing them returns zero features without any error. We
 always send the CRS as a URN with lat/lon order and read gml:pos back as "lat lon".
+
+Paging needs a stable sort. Without sortBy, startIndex pages overlap: on the Northern California AOI
+the run fetched 590 sites twice and silently missed 590 others (2.1%). Found because the run
+report's duplicate count was non-zero; fixed by sorting on the record id.
 """
 
 from __future__ import annotations
@@ -48,6 +52,7 @@ def fetch(session, aoi: BBox, since: datetime, page_size: int = PAGE_SIZE, **_) 
         params = {
             "service": "WFS", "version": "1.1.0", "request": "GetFeature", "typeName": "mrds",
             "bbox": bbox_param(aoi), "maxFeatures": page_size, "startIndex": start,
+            "sortBy": "dep_id",  # stable order, or pages overlap and records go missing
         }
         resp = session.get(URL, params=params, timeout=TIMEOUT)
         resp.raise_for_status()

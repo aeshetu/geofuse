@@ -91,6 +91,8 @@ def test_wfs_fetch_pages_with_start_index(aoi):
     pages = list(mrds_wfs.fetch(session, aoi, SINCE, page_size=3))
     assert len(pages) == 2
     assert [c["startIndex"] for c in session.calls] == [0, 3]
+    # Regression: unsorted paging overlapped and dropped 2.1% of sites on the live service.
+    assert all(c["sortBy"] == "dep_id" for c in session.calls)
 
 
 def test_wfs_exception_report_raises(aoi):
